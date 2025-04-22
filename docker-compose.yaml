@@ -1,0 +1,23 @@
+name: blog
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: postgres_container
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: blog
+      PGDATA: /data/postgres
+    volumes:
+      - ./data/postgres:/data/postgres
+    networks:
+      - blog-network
+
+networks:
+  blog-network:
+    driver: bridge
+
+volumes:
+  postgres:

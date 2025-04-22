@@ -1,0 +1,14 @@
+# IntelliJ IDEA project files
+.idea/
+
+# Compiled output or binary files
+bin/
+
+# Docker mounted volumes
+data/
+
+# Environment variable file
+.env
+
+# Temp folder
+tmp/
