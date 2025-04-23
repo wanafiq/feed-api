@@ -47,7 +47,7 @@ func (app *application) initialize() error {
 		return fmt.Errorf("error loading config: %w", err)
 	}
 
-	if app.db, err = database.InitDB(); err != nil {
+	if app.db, err = database.InitDB(app.config.DatabaseURL); err != nil {
 		return fmt.Errorf("error initializing DB: %w", err)
 	}
 
@@ -55,7 +55,7 @@ func (app *application) initialize() error {
 		return fmt.Errorf("error initializing logger: %w", err)
 	}
 	defer app.logger.Sync()
-	fmt.Printf("Logger initialized env: %s\n", app.config.Env)
+	fmt.Printf("logger initialized env: %s\n", app.config.Env)
 
 	return nil
 }
@@ -63,7 +63,7 @@ func (app *application) initialize() error {
 func main() {
 	var app application
 	if err := app.initialize(); err != nil {
-		log.Fatalf("Application initialization, %v", err)
+		log.Fatalf("application initialization, %v", err)
 	}
 	defer app.db.Close()
 	defer app.logger.Sync()
@@ -87,8 +87,8 @@ func main() {
 
 	app.router = routes.InitRoutes(app.authHandler)
 
-	fmt.Printf("Starting server on port %s...\n", app.config.Port)
+	fmt.Printf("starting server on port %s...\n", app.config.Port)
 	if err := app.router.Run(":" + app.config.Port); err != nil {
-		log.Fatalf("Server error: %v", err)
+		log.Fatalf("server error: %v", err)
 	}
 }
