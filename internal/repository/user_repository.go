@@ -123,7 +123,7 @@ func (r *userRepository) Update(ctx context.Context, tx *sql.Tx, user *models.Us
 
 	query := `
         UPDATE users 
-        SET username = $1, email = $2, password = $3, role = $4, is_active = $5, updated_at = $6, updated_by = $7
+        SET username = $1, email = $2, password = $3, role_id = $4, is_active = $5, updated_at = $6, updated_by = $7
         WHERE id = $8
         RETURNING updated_at, updated_by;
     `
@@ -134,7 +134,7 @@ func (r *userRepository) Update(ctx context.Context, tx *sql.Tx, user *models.Us
 			&user.Username,
 			&user.Email,
 			&user.Password,
-			&user.Role,
+			&user.Role.ID,
 			&user.IsActive,
 			&user.UpdatedAt,
 			&user.UpdatedBy,
