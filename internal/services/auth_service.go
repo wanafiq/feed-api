@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/wanafiq/feed-api/internal/config"
 	"github.com/wanafiq/feed-api/internal/constants"
+	"github.com/wanafiq/feed-api/internal/email"
 	"github.com/wanafiq/feed-api/internal/models"
 	"github.com/wanafiq/feed-api/internal/repository"
 	"github.com/wanafiq/feed-api/internal/types"
@@ -18,22 +20,31 @@ import (
 )
 
 type AuthService struct {
-	config    *config.Config
-	db        *sql.DB
-	logger    *zap.SugaredLogger
-	userRepo  repository.UserRepository
-	roleRepo  repository.RoleRepository
-	tokenRepo repository.TokenRepository
+	config       *config.Config
+	db           *sql.DB
+	logger       *zap.SugaredLogger
+	userRepo     repository.UserRepository
+	roleRepo     repository.RoleRepository
+	tokenRepo    repository.TokenRepository
+	emailService *EmailService
 }
 
-func NewAuthService(config *config.Config, db *sql.DB, logger *zap.SugaredLogger, userRepo repository.UserRepository, roleRepo repository.RoleRepository, tokenRepo repository.TokenRepository) *AuthService {
+func NewAuthService(
+	config *config.Config,
+	db *sql.DB, logger *zap.SugaredLogger,
+	userRepo repository.UserRepository,
+	roleRepo repository.RoleRepository,
+	tokenRepo repository.TokenRepository,
+	emailService *EmailService,
+) *AuthService {
 	return &AuthService{
-		config:    config,
-		db:        db,
-		logger:    logger,
-		userRepo:  userRepo,
-		roleRepo:  roleRepo,
-		tokenRepo: tokenRepo,
+		config:       config,
+		db:           db,
+		logger:       logger,
+		userRepo:     userRepo,
+		roleRepo:     roleRepo,
+		tokenRepo:    tokenRepo,
+		emailService: emailService,
 	}
 }
 
@@ -84,7 +95,8 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 		return nil, err
 	}
 
-	hashedToken, err := utils.Hash(uuid.New().String())
+	rawToken := uuid.New().String()
+	hashedToken, err := utils.Hash(rawToken)
 	if err != nil {
 		s.logger.Errorw("utils.Hash", "error", err.Error())
 		return nil, err
@@ -99,6 +111,16 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 
 	if err := s.tokenRepo.Save(ctx, tx, &token); err != nil {
 		s.logger.Errorw("tokenRepo.Save", "error", err.Error())
+		return nil, err
+	}
+
+	data := types.ConfirmationEmailData{
+		Username:      user.Username,
+		ActivationUrl: fmt.Sprintf("%s/confirm/%s", s.config.Url.Web, rawToken),
+	}
+
+	if err := s.emailService.Send(email.ConfirmationEmail, data, &user); err != nil {
+		s.logger.Errorw("emailService.Send", "error", err.Error())
 		return nil, err
 	}
 

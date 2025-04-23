@@ -27,15 +27,17 @@ type application struct {
 	config *config.Config
 	db     *sql.DB
 	logger *zap.SugaredLogger
-	router *gin.Engine
 
 	userRepo  repository.UserRepository
 	roleRepo  repository.RoleRepository
 	tokenRepo repository.TokenRepository
 
-	authService *services.AuthService
+	authService  *services.AuthService
+	emailService *services.EmailService
 
 	authHandler *handlers.AuthHandler
+
+	router *gin.Engine
 }
 
 func (app *application) initialize() error {
@@ -55,16 +57,6 @@ func (app *application) initialize() error {
 	defer app.logger.Sync()
 	fmt.Printf("Logger initialized env: %s\n", app.config.Env)
 
-	app.userRepo = repository.NewUserRepository(app.db)
-	app.roleRepo = repository.NewRoleRepository(app.db)
-	app.tokenRepo = repository.NewTokenRepository(app.db)
-
-	app.authService = services.NewAuthService(app.config, app.db, app.logger, app.userRepo, app.roleRepo, app.tokenRepo)
-
-	app.authHandler = handlers.NewAuthHandler(app.logger, app.authService)
-
-	app.router = routes.InitRoutes(app.authHandler)
-
 	return nil
 }
 
@@ -75,6 +67,25 @@ func main() {
 	}
 	defer app.db.Close()
 	defer app.logger.Sync()
+
+	app.userRepo = repository.NewUserRepository(app.db)
+	app.roleRepo = repository.NewRoleRepository(app.db)
+	app.tokenRepo = repository.NewTokenRepository(app.db)
+
+	app.emailService = services.NewEmailService(app.config, app.logger)
+	app.authService = services.NewAuthService(
+		app.config,
+		app.db,
+		app.logger,
+		app.userRepo,
+		app.roleRepo,
+		app.tokenRepo,
+		app.emailService,
+	)
+
+	app.authHandler = handlers.NewAuthHandler(app.logger, app.authService)
+
+	app.router = routes.InitRoutes(app.authHandler)
 
 	fmt.Printf("Starting server on port %s...\n", app.config.Port)
 	if err := app.router.Run(":" + app.config.Port); err != nil {
