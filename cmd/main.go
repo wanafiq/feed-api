@@ -7,8 +7,11 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/wanafiq/feed-api/internal/config"
 	"github.com/wanafiq/feed-api/internal/database"
+	"github.com/wanafiq/feed-api/internal/handlers"
 	"github.com/wanafiq/feed-api/internal/logger"
+	"github.com/wanafiq/feed-api/internal/repository"
 	"github.com/wanafiq/feed-api/internal/routes"
+	"github.com/wanafiq/feed-api/internal/services"
 	"go.uber.org/zap"
 	"log"
 )
@@ -23,8 +26,16 @@ func init() {
 type application struct {
 	config *config.Config
 	db     *sql.DB
-	logger *zap.Logger
+	logger *zap.SugaredLogger
 	router *gin.Engine
+
+	userRepo  repository.UserRepository
+	roleRepo  repository.RoleRepository
+	tokenRepo repository.TokenRepository
+
+	authService *services.AuthService
+
+	authHandler *handlers.AuthHandler
 }
 
 func (app *application) initialize() error {
@@ -41,9 +52,18 @@ func (app *application) initialize() error {
 	if app.logger, err = logger.NewLogger(); err != nil {
 		return fmt.Errorf("error initializing logger: %w", err)
 	}
+	defer app.logger.Sync()
 	fmt.Printf("Logger initialized env: %s\n", app.config.Env)
 
-	app.router = routes.InitRoutes()
+	app.userRepo = repository.NewUserRepository(app.db)
+	app.roleRepo = repository.NewRoleRepository(app.db)
+	app.tokenRepo = repository.NewTokenRepository(app.db)
+
+	app.authService = services.NewAuthService(app.config, app.db, app.logger, app.userRepo, app.roleRepo, app.tokenRepo)
+
+	app.authHandler = handlers.NewAuthHandler(app.logger, app.authService)
+
+	app.router = routes.InitRoutes(app.authHandler)
 
 	return nil
 }

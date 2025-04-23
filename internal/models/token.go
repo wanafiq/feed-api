@@ -1,23 +1,13 @@
-// File: /internal/models/token.go
-// Purpose: Defines the Token model for managing confirmation and password reset tokens.
-
 package models
 
 import (
-	"time" // For expiration fields and auditing
-	// TODO: Add other necessary imports if needed
+	"time"
 )
 
-// Token represents an authentication token (confirmation, password reset, etc.).
 type Token struct {
-	ID         int       `json:"id"`
-	TokenValue string    `json:"token_value"` // Secure/hashed token value
-	TokenType  string    `json:"token_type"`  // E.g., "confirmation", "password_reset"
-	UserID     int       `json:"user_id"`     // Reference to the User.ID
-	Expiration time.Time `json:"expiration"`
-	CreatedAt  time.Time `json:"created_at"`
-	CreatedBy  string    `json:"created_by"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	UpdatedBy  string    `json:"updated_by"`
-	// TODO: Add additional fields if necessary
+	ID        string    `db:"id" json:"id"`
+	Type      string    `db:"type" json:"type"`
+	Value     string    `db:"value" json:"value"`
+	ExpiredAt time.Time `db:"expired_at" json:"expiredAt"`
+	UserID    string    `db:"user_id" json:"userId"`
 }
