@@ -1,16 +1,27 @@
-// File: /internal/database/database.go
-// Purpose: Manages the PostgreSQL database connection and initialization.
-
 package database
 
 import (
-	"database/sql"        // For database connectivity
-	_ "github.com/lib/pq" // PostgreSQL driver import
-	// TODO: Import additional packages if necessary
+	"database/sql"
+	"fmt"
+	"os"
+
+	_ "github.com/lib/pq"
 )
 
-// InitDB initializes and returns a PostgreSQL database connection.
 func InitDB() (*sql.DB, error) {
-	// TODO: Implement the PostgreSQL connection logic and initialize pg_trgm extension if required
-	return nil, nil
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		return nil, fmt.Errorf("DATABASE_URL is not set")
+	}
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return nil, fmt.Errorf("error opening database: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("error connecting to database: %w", err)
+	}
+
+	return db, nil
 }
