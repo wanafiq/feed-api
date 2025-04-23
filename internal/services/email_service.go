@@ -16,11 +16,6 @@ type EmailService struct {
 	logger *zap.SugaredLogger
 }
 
-type confirmationEmailVars struct {
-	Username      string
-	ActivationURL string
-}
-
 func NewEmailService(config *config.Config, logger *zap.SugaredLogger) *EmailService {
 	return &EmailService{
 		config: config,
