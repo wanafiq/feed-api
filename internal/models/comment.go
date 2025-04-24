@@ -10,13 +10,11 @@ import (
 
 // Comment represents a comment on a blog post.
 type Comment struct {
-	ID        int       `json:"id"`
-	PostID    int       `json:"post_id"`   // Reference to the Post.ID
-	AuthorID  int       `json:"author_id"` // Reference to the User.ID
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	CreatedBy string    `json:"created_by"`
-	UpdatedAt time.Time `json:"updated_at"`
-	UpdatedBy string    `json:"updated_by"`
-	// TODO: Add additional fields if necessary
+	ID        string    `db:"id" json:"id"`
+	AuthorID  string    `db:"author_id" json:"author_id"`
+	Content   string    `db:"content" json:"content"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	CreatedBy string    `db:"created_by" json:"created_by"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at,omitzero"`
+	UpdatedBy string    `db:"updated_by" json:"updated_by,omitzero"`
 }

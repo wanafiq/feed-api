@@ -65,6 +65,12 @@ func (m *Middleware) RequireRoles(allowedRoles ...string) gin.HandlerFunc {
 			return
 		}
 
+		// TODO: check if user owns the resource, if he does, skip this middleware
+		// Create a middleware to load the resource before checking permissions
+		// Middleware name = LoadResource
+		// LoadResource will check the url path to determine the resource type
+		// LoadResource will set the resource on the context, i.e: userCtx, postCtx, commentCtx, etc
+
 		userRole := userCtx.Role
 		authorized := slices.Contains(allowedRoles, userRole)
 		if !authorized {

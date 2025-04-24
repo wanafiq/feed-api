@@ -8,7 +8,7 @@ type User struct {
 	ID        string     `db:"id" json:"id"`
 	Username  string     `db:"username" json:"username"`
 	Email     string     `db:"email" json:"email"`
-	Password  string     `db:"password_hash" json:"-"`
+	Password  string     `db:"password" json:"-"`
 	IsActive  bool       `db:"is_active" json:"is_active"`
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	CreatedBy string     `db:"created_by" json:"created_by"`
