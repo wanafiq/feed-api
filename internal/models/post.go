@@ -1,14 +1,9 @@
-// File: /internal/models/post.go
-// Purpose: Defines the Post model with content, tags, slugs, and auditing fields.
-
 package models
 
 import (
-	"time" // For time and auditing fields
-	// TODO: Additional imports if necessary
+	"time"
 )
 
-// Post represents a blog post.
 type Post struct {
 	ID          string     `db:"id" json:"id"`
 	Title       string     `db:"title" json:"title"`

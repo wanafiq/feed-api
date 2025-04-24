@@ -1,14 +1,9 @@
-// File: /internal/models/comment.go
-// Purpose: Defines the Comment model for blog posts with auditing fields.
-
 package models
 
 import (
-	"time" // For times and auditing fields
-	// TODO: Additional imports if needed
+	"time"
 )
 
-// Comment represents a comment on a blog post.
 type Comment struct {
 	ID        string    `db:"id" json:"id"`
 	AuthorID  string    `db:"author_id" json:"author_id"`
