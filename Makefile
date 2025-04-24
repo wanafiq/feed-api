@@ -30,7 +30,7 @@ build: clean
 
 help:
 	@echo "Makefile for project tasks:"
-	@echo "  migrations      	- Create a new migration file"
+	@echo "  migration      	- Create a new migration file"
 	@echo "  migrate-up         - Apply all pending database migrations"
 	@echo "  migrate-down       - Rollback the last database migration"
 	@echo "  swagger-gen        - Generate Swagger documentation"

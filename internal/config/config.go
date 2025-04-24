@@ -10,9 +10,16 @@ type Config struct {
 	Env         string
 	DatabaseURL string
 	Port        string
-	JWTSecret   string
+	Jwt         *jwt
 	Smtp        *smtp
 	Url         *url
+}
+
+type jwt struct {
+	Secret        string
+	ExpiryInHours int
+	Issuer        string
+	Audience      string
 }
 
 type smtp struct {
@@ -42,6 +49,18 @@ func LoadConfig() (*Config, error) {
 		port = "8080"
 	}
 
+	jwtExpiryInHours, err := strconv.Atoi(os.Getenv("JWT_EXPIRY_IN_HOURS"))
+	if err != nil {
+		return nil, err
+	}
+
+	jwt := &jwt{
+		Secret:        os.Getenv("JWT_SECRET"),
+		ExpiryInHours: jwtExpiryInHours,
+		Issuer:        os.Getenv("JWT_ISSUER"),
+		Audience:      os.Getenv("JWT_AUDIENCE"),
+	}
+
 	smptpPort, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
 	if err != nil {
 		return nil, err
@@ -63,7 +82,7 @@ func LoadConfig() (*Config, error) {
 		Env:         env,
 		Port:        port,
 		DatabaseURL: os.Getenv("DATABASE_URL"),
-		JWTSecret:   os.Getenv("JWT_SECRET"),
+		Jwt:         jwt,
 		Smtp:        smtp,
 		Url:         url,
 	}, nil
@@ -76,6 +95,18 @@ func validateRequiredConfig() error {
 
 	if isEmpty := os.Getenv("JWT_SECRET") == ""; isEmpty {
 		return errors.New("JWT_SECRET is not set")
+	}
+
+	if isEmpty := os.Getenv("JWT_EXPIRY_IN_HOURS") == ""; isEmpty {
+		return errors.New("JWT_EXPIRY_IN_HOURS is not set")
+	}
+
+	if isEmpty := os.Getenv("JWT_ISSUER") == ""; isEmpty {
+		return errors.New("JWT_ISSUER is not set")
+	}
+
+	if isEmpty := os.Getenv("JWT_AUDIENCE") == ""; isEmpty {
+		return errors.New("JWT_AUDIENCE is not set")
 	}
 
 	if isEmpty := os.Getenv("SMTP_HOST") == ""; isEmpty {

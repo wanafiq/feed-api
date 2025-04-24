@@ -15,8 +15,6 @@ import (
 	"github.com/wanafiq/feed-api/internal/utils"
 	"go.uber.org/zap"
 	"time"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
 type AuthService struct {
@@ -141,25 +139,17 @@ func (s *AuthService) Login(ctx context.Context, req *types.LoginRequest) (strin
 		return "", err
 	}
 
-	token, err := s.generateJWT(user)
+	secret := s.config.Jwt.Secret
+	duration := time.Duration(s.config.Jwt.ExpiryInHours) * time.Hour
+	expiredAt := time.Now().Add(duration)
+	issuer := s.config.Jwt.Issuer
+	audience := s.config.Jwt.Audience
+
+	token, err := utils.GenerateJWT(user, secret, expiredAt, issuer, audience)
 	if err != nil {
 		s.logger.Errorw("generateJWT", "error", err.Error())
 		return "", err
 	}
 
 	return token, nil
-}
-
-func (s *AuthService) generateJWT(user *models.User) (string, error) {
-	secretKey := []byte(s.config.JWTSecret)
-
-	claims := jwt.MapClaims{
-		"email": user.Email,
-		"role":  user.Role,
-		"exp":   time.Now().Add(72 * time.Hour).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString(secretKey)
 }

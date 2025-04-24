@@ -2,7 +2,7 @@ package constants
 
 import "time"
 
-var (
+const (
 	DevEnv = "development"
 
 	QueryTimeout = time.Second * 5
