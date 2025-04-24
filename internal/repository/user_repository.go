@@ -10,6 +10,7 @@ import (
 type UserRepository interface {
 	Save(ctx context.Context, tx *sql.Tx, user *models.User) error
 	FindByEmail(ctx context.Context, email string) (*models.User, error)
+	FindByID(ctx context.Context, userID string) (*models.User, error)
 	Update(ctx context.Context, tx *sql.Tx, user *models.User) error
 }
 
@@ -86,11 +87,67 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*models
                r.updated_by
         FROM users u
         JOIN roles r ON r.id = u.role_id
-        WHERE email = $1;
+        WHERE u.email = $1;
     `
 
 	user := &models.User{}
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.Password,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.CreatedBy,
+		&user.UpdatedAt,
+		&user.UpdatedBy,
+		&user.Role.ID,
+		&user.Role.Name,
+		&user.Role.Level,
+		&user.Role.Description,
+		&user.Role.IsActive,
+		&user.Role.CreatedAt,
+		&user.Role.CreatedBy,
+		&user.Role.UpdatedAt,
+		&user.Role.UpdatedBy,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (r *userRepository) FindByID(ctx context.Context, userID string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
+	defer cancel()
+
+	query := `
+        SELECT u.id, 
+               u.username, 
+               u.email, 
+               u.password, 
+               u.is_active, 
+               u.created_at, 
+               u.created_by, 
+               u.updated_at, 
+               u.updated_by,
+               r.id,
+               r.name,
+               r.level,
+               r.description,
+               r.is_active,
+               r.created_at,
+               r.created_by,
+               r.updated_at,
+               r.updated_by
+        FROM users u
+        JOIN roles r ON r.id = u.role_id
+        WHERE u.id = $1;
+    `
+
+	user := &models.User{}
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,

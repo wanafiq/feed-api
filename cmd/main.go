@@ -9,6 +9,7 @@ import (
 	"github.com/wanafiq/feed-api/internal/database"
 	"github.com/wanafiq/feed-api/internal/handlers"
 	"github.com/wanafiq/feed-api/internal/logger"
+	"github.com/wanafiq/feed-api/internal/middleware"
 	"github.com/wanafiq/feed-api/internal/repository"
 	"github.com/wanafiq/feed-api/internal/routes"
 	"github.com/wanafiq/feed-api/internal/services"
@@ -28,16 +29,23 @@ type application struct {
 	db     *sql.DB
 	logger *zap.SugaredLogger
 
-	userRepo  repository.UserRepository
-	roleRepo  repository.RoleRepository
-	tokenRepo repository.TokenRepository
+	// repositories
+	userRepo     repository.UserRepository
+	roleRepo     repository.RoleRepository
+	tokenRepo    repository.TokenRepository
+	followerRepo repository.FollowerRepository
 
+	// services
 	authService  *services.AuthService
 	emailService *services.EmailService
+	userService  *services.UserService
 
+	// handlers
 	authHandler *handlers.AuthHandler
+	userHandler *handlers.UserHandler
 
-	router *gin.Engine
+	middleware *middleware.Middleware
+	router     *gin.Engine
 }
 
 func (app *application) initialize() error {
@@ -68,10 +76,13 @@ func main() {
 	defer app.db.Close()
 	defer app.logger.Sync()
 
+	// repositories
 	app.userRepo = repository.NewUserRepository(app.db)
 	app.roleRepo = repository.NewRoleRepository(app.db)
 	app.tokenRepo = repository.NewTokenRepository(app.db)
+	app.followerRepo = repository.NewFollowerRepository(app.db)
 
+	// services
 	app.emailService = services.NewEmailService(app.config, app.logger)
 	app.authService = services.NewAuthService(
 		app.config,
@@ -82,10 +93,14 @@ func main() {
 		app.tokenRepo,
 		app.emailService,
 	)
+	app.userService = services.NewUserService(app.config, app.db, app.logger, app.userRepo, app.followerRepo)
 
+	// handlers
 	app.authHandler = handlers.NewAuthHandler(app.logger, app.authService)
+	app.userHandler = handlers.NewUserHandler(app.logger, app.userService)
 
-	app.router = routes.InitRoutes(app.authHandler)
+	app.middleware = middleware.NewMiddleware(app.config, app.logger)
+	app.router = routes.InitRoutes(app.middleware, app.authHandler, app.userHandler)
 
 	fmt.Printf("starting server on port %s...\n", app.config.Port)
 	if err := app.router.Run(":" + app.config.Port); err != nil {
