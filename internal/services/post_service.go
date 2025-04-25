@@ -134,7 +134,24 @@ func (s *PostService) Update(ctx context.Context, userCtx middleware.UserContext
 }
 
 func (s *PostService) Delete(ctx context.Context, postID string) error {
-	return nil
+	return withTx(ctx, s.db, func(tx *sql.Tx) error {
+		if err := s.postRepo.DeletePostTag(ctx, tx, postID); err != nil {
+			s.logger.Errorw("failed to delete post tag", "error", err.Error())
+			return err
+		}
+
+		if err := s.postRepo.DeletePostUser(ctx, tx, postID); err != nil {
+			s.logger.Errorw("failed to delete post user", "error", err.Error())
+			return err
+		}
+
+		if err := s.postRepo.Delete(ctx, tx, postID); err != nil {
+			s.logger.Errorw("failed to delete post", "error", err.Error())
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (s *PostService) processTags(ctx context.Context, tx *sql.Tx, post *models.Post, tagNames []string) error {

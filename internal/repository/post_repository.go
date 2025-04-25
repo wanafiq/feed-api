@@ -12,12 +12,16 @@ import (
 
 type PostRepository interface {
 	Save(ctx context.Context, tx *sql.Tx, post *models.Post) error
-	SavePostTag(ctx context.Context, tx *sql.Tx, postID string, tagName string) error
-	SavePostUser(ctx context.Context, tx *sql.Tx, postID string, userID string) error
 	FindAll(ctx context.Context, filter models.PostFilter) ([]*models.Post, int, error)
 	FindByID(ctx context.Context, postID string) (*models.Post, error)
 	Update(ctx context.Context, tx *sql.Tx, post *models.Post) (*models.Post, error)
 	Delete(ctx context.Context, tx *sql.Tx, postID string) error
+
+	SavePostTag(ctx context.Context, tx *sql.Tx, postID string, tagName string) error
+	DeletePostTag(ctx context.Context, tx *sql.Tx, postID string) error
+
+	SavePostUser(ctx context.Context, tx *sql.Tx, postID string, userID string) error
+	DeletePostUser(ctx context.Context, tx *sql.Tx, postID string) error
 }
 
 type postRepository struct {
@@ -263,6 +267,69 @@ func (r *postRepository) Update(ctx context.Context, tx *sql.Tx, post *models.Po
 func (r *postRepository) Delete(ctx context.Context, tx *sql.Tx, postID string) error {
 	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
 	defer cancel()
+
+	query := `
+		DELETE FROM posts
+		WHERE id = $1
+	`
+
+	var err error
+
+	if tx != nil {
+		_, err = tx.ExecContext(ctx, query, postID)
+	} else {
+		_, err = r.db.ExecContext(ctx, query, postID)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *postRepository) DeletePostTag(ctx context.Context, tx *sql.Tx, postID string) error {
+	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
+	defer cancel()
+
+	query := `
+		DELETE FROM post_tag
+		WHERE post_id = $1
+	`
+
+	var err error
+	if tx != nil {
+		_, err = tx.ExecContext(ctx, query, postID)
+	} else {
+		_, err = r.db.ExecContext(ctx, query, postID)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *postRepository) DeletePostUser(ctx context.Context, tx *sql.Tx, postID string) error {
+	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
+	defer cancel()
+
+	query := `
+		DELETE FROM post_user
+		WHERE post_id = $1
+	`
+
+	var err error
+	if tx != nil {
+		_, err = tx.ExecContext(ctx, query, postID)
+	} else {
+		_, err = r.db.ExecContext(ctx, query, postID)
+	}
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

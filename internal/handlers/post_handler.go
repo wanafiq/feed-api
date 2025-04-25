@@ -154,4 +154,12 @@ func (h *PostHandler) Delete(c *gin.Context) {
 		response.BadRequest(c, errors.New("postID is required"))
 		return
 	}
+
+	err := h.postService.Delete(context.Background(), postID)
+	if err != nil {
+		response.InternalServerError(c)
+		return
+	}
+
+	response.NoContent(c)
 }
