@@ -5,9 +5,9 @@ import (
 )
 
 type Token struct {
-	ID        string    `db:"id" json:"id"`
-	Type      string    `db:"type" json:"type"`
-	Value     string    `db:"value" json:"value"`
-	ExpiredAt time.Time `db:"expired_at" json:"expiredAt"`
-	UserID    string    `db:"user_id" json:"userId"`
+	ID        string    `db:"id" json:"id,omitempty"`
+	Type      string    `db:"type" json:"type,omitempty"`
+	Value     string    `db:"value" json:"value,omitempty"`
+	ExpiredAt time.Time `db:"expired_at" json:"expiredAt,omitempty"`
+	UserID    string    `db:"user_id" json:"userId,omitempty"`
 }

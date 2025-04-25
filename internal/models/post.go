@@ -5,27 +5,28 @@ import (
 )
 
 type Post struct {
-	ID          string     `db:"id" json:"id"`
-	Title       string     `db:"title" json:"title"`
-	Slug        string     `db:"slug" json:"slug"`
-	Content     string     `db:"content" json:"content"`
-	IsPublished bool       `db:"is_published" json:"is_published"`
-	PublishedAt *time.Time `db:"published_at" json:"published_at"`
-	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
-	CreatedBy   string     `db:"created_by" json:"created_by"`
-	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at,omitzero"`
-	UpdatedBy   *string    `db:"updated_by" json:"updated_by,omitzero"`
-	AuthorID    string     `db:"author_id" json:"author_id"`
-	Tags        []*Tag     `json:"tags,omitempty,omitzero"`
-	Author      User       `json:"author,omitempty,omitzero"`
+	ID          string     `db:"id" json:"id,omitempty"`
+	Title       string     `db:"title" json:"title,omitempty"`
+	Slug        string     `db:"slug" json:"slug,omitempty"`
+	Content     string     `db:"content" json:"content,omitempty"`
+	IsPublished bool       `db:"is_published" json:"isPublished,omitempty"`
+	PublishedAt *time.Time `db:"published_at" json:"publishedAt,omitempty"`
+	CreatedAt   time.Time  `db:"created_at" json:"createdAt,omitempty"`
+	CreatedBy   string     `db:"created_by" json:"createdBy,omitempty"`
+	UpdatedAt   *time.Time `db:"updated_at" json:"updatedAt,omitempty"`
+	UpdatedBy   *string    `db:"updated_by" json:"updatedBy,omitempty"`
+	AuthorID    string     `db:"author_id" json:"authorId,omitempty"`
+
+	Tags   []Tag `json:"tags,omitempty"`
+	Author User  `json:"author,omitempty"`
 }
 
 type PostFilter struct {
-	Offset   int
-	Limit    int
-	Search   string
-	Sort     string
-	DateFrom *time.Time // format: "YYYY-MM-DD"
-	DateTo   *time.Time // format: "YYYY-MM-DD"
-	Tags     []string
+	Offset   int        `json:"offset,omitempty"`
+	Limit    int        `json:"limit,omitempty"`
+	Search   string     `json:"search,omitempty"`
+	Sort     string     `json:"sort,omitempty"` // "asc" or "desc"
+	DateFrom *time.Time `json:"date_from,omitempty"`
+	DateTo   *time.Time `json:"date_to,omitempty"`
+	Tags     []string   `json:"tags,omitempty"`
 }

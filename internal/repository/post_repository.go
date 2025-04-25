@@ -130,15 +130,15 @@ func (r *postRepository) FindAll(ctx context.Context, filter models.PostFilter) 
 	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
 	defer cancel()
 
-	query, queryArgs := buildPostQuery(filter)
+	query, countQuery, queryArgs, countArgs := buildPostQuery(filter)
 
-	countQuery, countArgs := buildPostCountQuery(filter)
-
+	// total count query
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
+	// data query (with pagination)
 	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, 0, err
@@ -149,9 +149,20 @@ func (r *postRepository) FindAll(ctx context.Context, filter models.PostFilter) 
 	for rows.Next() {
 		var post models.Post
 		err := rows.Scan(
-			&post.ID, &post.Title, &post.Slug, &post.Content, &post.IsPublished,
-			&post.PublishedAt, &post.CreatedAt, &post.CreatedBy,
-			&post.UpdatedAt, &post.UpdatedBy, &post.AuthorID,
+			&post.ID,
+			&post.Title,
+			&post.Slug,
+			&post.Content,
+			&post.IsPublished,
+			&post.PublishedAt,
+			&post.CreatedAt,
+			&post.CreatedBy,
+			&post.UpdatedAt,
+			&post.UpdatedBy,
+			&post.AuthorID,
+			&post.Author.ID,
+			&post.Author.Username,
+			&post.Author.Email,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -170,8 +181,10 @@ func (r *postRepository) FindByID(ctx context.Context, postID string) (*models.P
 		SELECT
 			p.id, p.title, p.slug, p.content, p.is_published, p.published_at,
 			p.created_at, p.created_by, p.updated_at, p.updated_by, p.author_id,
-			u.id as author_id, u.username as author_username, u.email as author_email,
-			r.id as role_id, r.name as role_name, r.level as role_level, r.description as role_description, r.is_active as role_is_active, r.created_at as role_created_at, r.created_by as role_created_by, r.updated_at as role_updated_at, r.updated_by as role_updated_by
+			u.id as author_id, u.username, u.email as author_email,
+			r.id as role_id, r.name as role_name, r.level as role_level, r.description as role_description, 
+			r.is_active as role_is_active, r.created_at as role_created_at, r.created_by as role_created_by, 
+			r.updated_at as role_updated_at, r.updated_by as role_updated_by
 		FROM posts p
 		JOIN users u ON p.author_id = u.id
 		JOIN roles r ON u.role_id = r.id
@@ -334,75 +347,42 @@ func (r *postRepository) DeletePostUser(ctx context.Context, tx *sql.Tx, postID 
 	return nil
 }
 
-func buildPostQuery(filter models.PostFilter) (query string, args []any) {
-	whereClauses, args := buildWhereClause(filter)
-	orderBy := buildOrderByClause(filter.Sort)
-	limitOffset := "LIMIT $%d OFFSET $%d"
-
-	baseQuery := `
-		SELECT
-			id, title, slug, content, is_published, published_at,
-			created_at, created_by, updated_at, updated_by, author_id
-		FROM posts
-	`
-
-	if len(whereClauses) > 0 {
-		baseQuery += " WHERE " + strings.Join(whereClauses, " AND ")
-	}
-
-	// Calculate the starting index for LIMIT and OFFSET placeholders
-	limitOffsetStartIndex := len(args) + 1
-
-	// Append LIMIT and OFFSET to the args slice
-	args = append(args, filter.Limit, filter.Offset)
-
-	finalQuery := baseQuery + fmt.Sprintf(" ORDER BY %s %s", orderBy, fmt.Sprintf(limitOffset, limitOffsetStartIndex, limitOffsetStartIndex+1))
-	return finalQuery, args
-}
-
-func buildPostCountQuery(filter models.PostFilter) (query string, args []any) {
-	whereClauses, args := buildWhereClause(filter)
-	baseQuery := `SELECT COUNT(*) FROM posts`
-	if len(whereClauses) > 0 {
-		baseQuery += " WHERE " + strings.Join(whereClauses, " AND ")
-	}
-	return baseQuery, args
-}
-
-func buildWhereClause(filter models.PostFilter) (whereClauses []string, args []any) {
-	args = []any{}
+func buildPostQuery(filter models.PostFilter) (query string, countQuery string, queryArgs []any, countArgs []any) {
+	var baseArgs []any
 	argID := 1
-	whereClauses = []string{"1=1"} // Start with a condition that's always true
+	where := []string{"1=1"}
 
-	// Search (title / content)
+	// Search in title or content
 	if filter.Search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(title ILIKE '%%' || $%d || '%%' OR content ILIKE '%%' || $%d || '%%')", argID, argID+1))
-		args = append(args, filter.Search, filter.Search)
-		argID += 2
+		where = append(where,
+			fmt.Sprintf("(p.title ILIKE '%%' || $%d || '%%' OR p.content ILIKE '%%' || $%d || '%%')", argID, argID),
+		)
+		baseArgs = append(baseArgs, filter.Search)
+		argID++
 	}
 
-	// Date range
+	// Date filters
 	if filter.DateFrom != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("created_at >= $%d", argID))
-		args = append(args, *filter.DateFrom)
+		where = append(where, fmt.Sprintf("p.created_at >= $%d", argID))
+		baseArgs = append(baseArgs, *filter.DateFrom)
 		argID++
 	}
 	if filter.DateTo != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("created_at <= $%d", argID))
-		args = append(args, *filter.DateTo)
+		where = append(where, fmt.Sprintf("p.created_at <= $%d", argID))
+		baseArgs = append(baseArgs, *filter.DateTo)
 		argID++
 	}
 
-	// Tags (by name)
+	// Tag filtering
 	if len(filter.Tags) > 0 {
-		tagPlaceholders := make([]string, len(filter.Tags))
-		for i, tag := range filter.Tags {
-			tagPlaceholders[i] = fmt.Sprintf("$%d", argID)
-			args = append(args, tag)
+		tagPlaceholders := []string{}
+		for _, tag := range filter.Tags {
+			tagPlaceholders = append(tagPlaceholders, fmt.Sprintf("$%d", argID))
+			baseArgs = append(baseArgs, tag)
 			argID++
 		}
-		whereClauses = append(whereClauses, fmt.Sprintf(`
-			id IN (
+		where = append(where, fmt.Sprintf(`
+			p.id IN (
 				SELECT pt.post_id
 				FROM post_tag pt
 				JOIN tags t ON t.id = pt.tag_id
@@ -413,14 +393,37 @@ func buildWhereClause(filter models.PostFilter) (whereClauses []string, args []a
 		`, strings.Join(tagPlaceholders, ", "), len(filter.Tags)))
 	}
 
-	return whereClauses, args
-}
+	// WHERE clause
+	whereClause := strings.Join(where, " AND ")
 
-func buildOrderByClause(sort string) string {
-	switch strings.ToLower(sort) {
-	case "asc":
-		return "created_at ASC"
-	default:
-		return "created_at DESC"
+	// Select with JOIN on users table
+	selectFields := `
+		SELECT 
+			p.id, p.title, p.slug, p.content, p.is_published, p.published_at,
+			p.created_at, p.created_by, p.updated_at, p.updated_by, p.author_id,
+			u.id, u.username, u.email
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE ` + whereClause
+
+	// Count query doesn't need user fields
+	countQuery = `SELECT COUNT(*) FROM posts p WHERE ` + whereClause
+	countArgs = append(countArgs, baseArgs...)
+
+	// Sorting
+	order := "p.created_at DESC"
+	if strings.ToLower(filter.Sort) == "asc" {
+		order = "p.created_at ASC"
 	}
+
+	// Pagination placeholders
+	limitPlaceholder := fmt.Sprintf("$%d", argID)
+	offsetPlaceholder := fmt.Sprintf("$%d", argID+1)
+	queryArgs = append(queryArgs, baseArgs...)
+	queryArgs = append(queryArgs, filter.Limit, filter.Offset)
+
+	// Final query
+	query = fmt.Sprintf(`%s ORDER BY %s LIMIT %s OFFSET %s`, selectFields, order, limitPlaceholder, offsetPlaceholder)
+
+	return query, countQuery, queryArgs, countArgs
 }
