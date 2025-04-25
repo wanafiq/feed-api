@@ -82,14 +82,14 @@ func (s *PostService) Save(ctx context.Context, userID string, req *types.SavePo
 	return post, nil
 }
 
-func (s *PostService) GetAll(ctx context.Context) ([]*models.Post, error) {
-	posts, err := s.postRepo.FindAll(ctx)
+func (s *PostService) GetAll(ctx context.Context, filter models.PostFilter) ([]*models.Post, int, error) {
+	posts, count, err := s.postRepo.FindAll(ctx, filter)
 	if err != nil {
 		s.logger.Errorw("failed to find all posts", "error", err.Error())
-		return nil, err
+		return nil, 0, err
 	}
 
-	return posts, nil
+	return posts, count, nil
 }
 
 func (s *PostService) GetAllByUserID(ctx context.Context, userID string) ([]*models.Post, error) {

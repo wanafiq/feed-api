@@ -19,3 +19,13 @@ type Post struct {
 	Tags        []Tag      `json:"tags,omitempty,omitzero"`
 	Author      User       `json:"author,omitempty,omitzero"`
 }
+
+type PostFilter struct {
+	Offset   int
+	Limit    int
+	Search   string
+	Sort     string
+	DateFrom *time.Time // format: "YYYY-MM-DD"
+	DateTo   *time.Time // format: "YYYY-MM-DD"
+	Tags     []string
+}

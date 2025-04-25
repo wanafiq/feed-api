@@ -57,5 +57,5 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, token)
+	response.OK(c, token, nil)
 }

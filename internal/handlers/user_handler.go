@@ -41,7 +41,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, user)
+	response.OK(c, user, nil)
 }
 
 func (h *UserHandler) Deactivate(c *gin.Context) {
@@ -62,7 +62,7 @@ func (h *UserHandler) Deactivate(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, user)
+	response.OK(c, user, nil)
 }
 
 func (h *UserHandler) Follow(c *gin.Context) {
