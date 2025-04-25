@@ -7,4 +7,5 @@ var (
 	ErrInvalidToken         = errors.New("invalid token")
 	ErrInvalidSigningMethod = errors.New("invalid signing method")
 	ErrExpiredJWT           = errors.New("JWT expired")
+	ErrUnauthorized         = errors.New("unauthorized")
 )

@@ -7,6 +7,7 @@ import (
 	"github.com/wanafiq/feed-api/internal/constants"
 	"github.com/wanafiq/feed-api/internal/models"
 	"strings"
+	"time"
 )
 
 type PostRepository interface {
@@ -14,9 +15,8 @@ type PostRepository interface {
 	SavePostTag(ctx context.Context, tx *sql.Tx, postID string, tagName string) error
 	SavePostUser(ctx context.Context, tx *sql.Tx, postID string, userID string) error
 	FindAll(ctx context.Context, filter models.PostFilter) ([]*models.Post, int, error)
-	FindAllByUserID(ctx context.Context, userID string) ([]*models.Post, error)
 	FindByID(ctx context.Context, postID string) (*models.Post, error)
-	Update(ctx context.Context, tx *sql.Tx, post *models.Post) error
+	Update(ctx context.Context, tx *sql.Tx, post *models.Post) (*models.Post, error)
 	Delete(ctx context.Context, tx *sql.Tx, postID string) error
 }
 
@@ -158,13 +158,6 @@ func (r *postRepository) FindAll(ctx context.Context, filter models.PostFilter) 
 	return posts, total, rows.Err()
 }
 
-func (r *postRepository) FindAllByUserID(ctx context.Context, userID string) ([]*models.Post, error) {
-	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
-	defer cancel()
-
-	return nil, nil
-}
-
 func (r *postRepository) FindByID(ctx context.Context, postID string) (*models.Post, error) {
 	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
 	defer cancel()
@@ -202,11 +195,69 @@ func (r *postRepository) FindByID(ctx context.Context, postID string) (*models.P
 	return &post, nil
 }
 
-func (r *postRepository) Update(ctx context.Context, tx *sql.Tx, post *models.Post) error {
+func (r *postRepository) Update(ctx context.Context, tx *sql.Tx, post *models.Post) (*models.Post, error) {
 	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
 	defer cancel()
 
-	return nil
+	query := `
+		UPDATE posts
+		SET
+			author_id = $1,
+			title = $2,
+			slug = $3,
+			content = $4,
+			is_published = $5,
+			published_at = $6,
+			updated_at = $7,
+			updated_by = $8
+		WHERE id = $9
+		RETURNING id, author_id, title, slug, content, is_published, published_at, created_at, created_by, updated_at, updated_by;
+	`
+
+	updatedPost := &models.Post{}
+	var row *sql.Row
+
+	if tx != nil {
+		row = tx.QueryRowContext(
+			ctx,
+			query,
+			post.AuthorID,
+			post.Title,
+			post.Slug,
+			post.Content,
+			post.IsPublished,
+			post.PublishedAt,
+			time.Now().UTC(),
+			post.UpdatedBy,
+			post.ID,
+		)
+	} else {
+		row = r.db.QueryRowContext(
+			ctx,
+			query,
+			post.AuthorID,
+			post.Title,
+			post.Slug,
+			post.Content,
+			post.IsPublished,
+			post.PublishedAt,
+			time.Now().UTC(),
+			post.UpdatedBy,
+			post.ID,
+		)
+	}
+
+	err := row.Scan(
+		&updatedPost.ID, &updatedPost.AuthorID, &updatedPost.Title, &updatedPost.Slug, &updatedPost.Content,
+		&updatedPost.IsPublished, &updatedPost.PublishedAt, &updatedPost.CreatedAt, &updatedPost.CreatedBy,
+		&updatedPost.UpdatedAt, &updatedPost.UpdatedBy,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedPost, nil
 }
 
 func (r *postRepository) Delete(ctx context.Context, tx *sql.Tx, postID string) error {

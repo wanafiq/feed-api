@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/wanafiq/feed-api/internal/constants"
 	"github.com/wanafiq/feed-api/internal/response"
 	"github.com/wanafiq/feed-api/internal/services"
 	"github.com/wanafiq/feed-api/internal/types"
@@ -49,7 +49,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	token, err := h.authService.Login(context.Background(), &req)
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
+		case errors.Is(err, constants.ErrUnauthorized):
 			response.Unauthorized(c, nil)
 		default:
 			response.InternalServerError(c)

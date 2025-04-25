@@ -34,15 +34,13 @@ func (h *PostHandler) Save(c *gin.Context) {
 		return
 	}
 
-	authorID := userCtx.ID
-
-	var req types.SavePostRequest
+	var req types.PostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, err)
 		return
 	}
 
-	post, err := h.postService.Save(context.Background(), authorID, &req)
+	post, err := h.postService.Save(context.Background(), userCtx.ID, &req)
 	if err != nil {
 		response.InternalServerError(c)
 		return
@@ -97,10 +95,6 @@ func (h *PostHandler) GetAll(c *gin.Context) {
 	response.OK(c, posts, &pagination)
 }
 
-func (h *PostHandler) GetAllByUserID(c *gin.Context) {
-
-}
-
 func (h *PostHandler) GetByID(c *gin.Context) {
 	postID := c.Param("postID")
 	if postID == "" {
@@ -123,9 +117,41 @@ func (h *PostHandler) GetByID(c *gin.Context) {
 }
 
 func (h *PostHandler) Update(c *gin.Context) {
+	userCtx, exists := middleware.GetUserContext(c)
+	if !exists {
+		response.Unauthorized(c, nil)
+		return
+	}
 
+	postID := c.Param("postID")
+	if postID == "" {
+		response.BadRequest(c, errors.New("postID is required"))
+		return
+	}
+
+	var req types.PostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err)
+		return
+	}
+
+	post, err := h.postService.Update(context.Background(), userCtx, postID, &req)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			response.NotFound(c, nil)
+		default:
+			response.InternalServerError(c)
+		}
+	}
+
+	response.OK(c, post, nil)
 }
 
 func (h *PostHandler) Delete(c *gin.Context) {
-
+	postID := c.Param("postID")
+	if postID == "" {
+		response.BadRequest(c, errors.New("postID is required"))
+		return
+	}
 }

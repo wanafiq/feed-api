@@ -19,7 +19,6 @@ func NewRoutes(m *middleware.Middleware, authHandler *handlers.AuthHandler, user
 		// Post routes
 		api.GET("/posts", postHandler.GetAll)
 		api.GET("/posts/:postID", postHandler.GetByID)
-		api.GET("/posts/user/:userID", postHandler.GetAllByUserID)
 	}
 
 	privateApi := router.Group("/api/v1")

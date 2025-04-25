@@ -131,12 +131,12 @@ func (s *AuthService) Login(ctx context.Context, req *types.LoginRequest) (strin
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		s.logger.Errorw("userRepo.FindByEmail", "error", err.Error())
-		return "", err
+		return "", constants.ErrUnauthorized
 	}
 
 	if ok := utils.VerifyHash(user.Password, req.Password); !ok {
 		s.logger.Errorw("utils.VerifyHash - invalid credential")
-		return "", err
+		return "", constants.ErrUnauthorized
 	}
 
 	secret := s.config.Jwt.Secret

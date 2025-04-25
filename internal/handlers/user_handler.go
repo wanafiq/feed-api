@@ -51,7 +51,7 @@ func (h *UserHandler) Deactivate(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.GetByID(c, userID)
+	user, err := h.userService.Deactivate(c, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):

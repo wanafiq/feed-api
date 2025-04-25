@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/wanafiq/feed-api/internal/config"
+	"github.com/wanafiq/feed-api/internal/middleware"
 	"github.com/wanafiq/feed-api/internal/models"
 	"github.com/wanafiq/feed-api/internal/repository"
 	"github.com/wanafiq/feed-api/internal/types"
@@ -33,7 +34,7 @@ func NewPostService(config *config.Config, db *sql.DB, logger *zap.SugaredLogger
 	}
 }
 
-func (s *PostService) Save(ctx context.Context, userID string, req *types.SavePostRequest) (*models.Post, error) {
+func (s *PostService) Save(ctx context.Context, userID string, req *types.PostRequest) (*models.Post, error) {
 	author, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		s.logger.Errorw("failed to find user by id", "userID", userID, "error", err.Error())
@@ -92,10 +93,6 @@ func (s *PostService) GetAll(ctx context.Context, filter models.PostFilter) ([]*
 	return posts, count, nil
 }
 
-func (s *PostService) GetAllByUserID(ctx context.Context, userID string) ([]*models.Post, error) {
-	return nil, nil
-}
-
 func (s *PostService) GetPostByID(ctx context.Context, postID string) (*models.Post, error) {
 	post, err := s.postRepo.FindByID(ctx, postID)
 	if err != nil {
@@ -112,9 +109,28 @@ func (s *PostService) GetPostByID(ctx context.Context, postID string) (*models.P
 	return post, nil
 }
 
-func (s *PostService) Update(ctx context.Context, post *models.Post) (*models.Post, error) {
+func (s *PostService) Update(ctx context.Context, userCtx middleware.UserContext, postID string, req *types.PostRequest) (*models.Post, error) {
+	post, err := s.postRepo.FindByID(ctx, postID)
+	if err != nil {
+		s.logger.Errorw("failed to find post by id", "postID", postID, "error", err.Error())
+		return nil, err
+	}
 
-	return nil, nil
+	now := time.Now()
+
+	post.Title = req.Title
+	post.Content = req.Content
+	post.IsPublished = req.Publish
+	post.UpdatedAt = &now
+	post.UpdatedBy = &userCtx.Username
+
+	updatedPost, err := s.postRepo.Update(ctx, nil, post)
+	if err != nil {
+		s.logger.Errorw("failed to update post", "error", err.Error())
+		return nil, err
+	}
+
+	return updatedPost, nil
 }
 
 func (s *PostService) Delete(ctx context.Context, postID string) error {
