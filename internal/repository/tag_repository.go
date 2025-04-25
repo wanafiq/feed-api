@@ -12,6 +12,7 @@ type TagRepository interface {
 	FindAll(ctx context.Context) ([]*models.Tag, error)
 	FindByName(ctx context.Context, tagName string) (*models.Tag, error)
 	FindByID(ctx context.Context, tagID string) (*models.Tag, error)
+	FindByPostID(ctx context.Context, postID string) ([]*models.Tag, error)
 	Delete(ctx context.Context, tx *sql.Tx, tagID string) error
 }
 
@@ -79,6 +80,35 @@ func (r tagRepository) FindByID(ctx context.Context, tagID string) (*models.Tag,
 	defer cancel()
 
 	return nil, nil
+}
+
+func (r tagRepository) FindByPostID(ctx context.Context, postID string) ([]*models.Tag, error) {
+	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
+	defer cancel()
+
+	query := `
+		SELECT
+			t.id, t.name
+		FROM tags t
+		JOIN post_tag pt ON t.id = pt.tag_id
+		WHERE pt.post_id = $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tags []*models.Tag
+	for rows.Next() {
+		var tag models.Tag
+		err := rows.Scan(&tag.ID, &tag.Name)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, &tag)
+	}
+	return tags, rows.Err()
 }
 
 func (r tagRepository) Delete(ctx context.Context, tx *sql.Tx, tagID string) error {

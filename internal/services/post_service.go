@@ -97,7 +97,19 @@ func (s *PostService) GetAllByUserID(ctx context.Context, userID string) ([]*mod
 }
 
 func (s *PostService) GetPostByID(ctx context.Context, postID string) (*models.Post, error) {
-	return nil, nil
+	post, err := s.postRepo.FindByID(ctx, postID)
+	if err != nil {
+		s.logger.Errorw("failed to find post by id", "postID", postID, "error", err.Error())
+		return nil, err
+	}
+
+	tags, err := s.tagRepo.FindByPostID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	post.Tags = tags
+
+	return post, nil
 }
 
 func (s *PostService) Update(ctx context.Context, post *models.Post) (*models.Post, error) {
@@ -137,7 +149,7 @@ func (s *PostService) createAndLinkTag(ctx context.Context, tx *sql.Tx, post *mo
 		return err
 	}
 
-	post.Tags = append(post.Tags, newTag)
+	post.Tags = append(post.Tags, &newTag)
 
 	if err := s.postRepo.SavePostTag(ctx, tx, post.ID, newTag.ID); err != nil {
 		s.logger.Errorw("failed to save post tag for new tag", "tagID", newTag.ID, "postID", post.ID, "error", err.Error())
@@ -148,7 +160,7 @@ func (s *PostService) createAndLinkTag(ctx context.Context, tx *sql.Tx, post *mo
 }
 
 func (s *PostService) linkExistingTag(ctx context.Context, tx *sql.Tx, post *models.Post, tag *models.Tag) error {
-	post.Tags = append(post.Tags, *tag)
+	post.Tags = append(post.Tags, tag)
 
 	if err := s.postRepo.SavePostTag(ctx, tx, post.ID, tag.ID); err != nil {
 		s.logger.Errorw("failed to save post tag for existing tag", "tagID", tag.ID, "postID", post.ID, "error", err.Error())

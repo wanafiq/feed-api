@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/wanafiq/feed-api/internal/middleware"
 	"github.com/wanafiq/feed-api/internal/models"
@@ -78,8 +80,6 @@ func (h *PostHandler) GetAll(c *gin.Context) {
 		Tags:     tags,
 	}
 
-	h.logger.Debugw("filter", "filter", filter)
-
 	posts, count, err := h.postService.GetAll(context.Background(), filter)
 	if err != nil {
 		response.InternalServerError(c)
@@ -102,7 +102,24 @@ func (h *PostHandler) GetAllByUserID(c *gin.Context) {
 }
 
 func (h *PostHandler) GetByID(c *gin.Context) {
+	postID := c.Param("postID")
+	if postID == "" {
+		response.BadRequest(c, errors.New("postID is required"))
+		return
+	}
 
+	post, err := h.postService.GetPostByID(context.Background(), postID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			response.NotFound(c, nil)
+		default:
+			response.InternalServerError(c)
+		}
+		return
+	}
+
+	response.OK(c, post, nil)
 }
 
 func (h *PostHandler) Update(c *gin.Context) {

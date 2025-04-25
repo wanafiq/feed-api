@@ -25,7 +25,9 @@ type postRepository struct {
 }
 
 func NewPostRepository(db *sql.DB) PostRepository {
-	return &postRepository{db: db}
+	return &postRepository{
+		db: db,
+	}
 }
 
 func (r *postRepository) Save(ctx context.Context, tx *sql.Tx, post *models.Post) error {
@@ -125,9 +127,6 @@ func (r *postRepository) FindAll(ctx context.Context, filter models.PostFilter) 
 	defer cancel()
 
 	query, queryArgs := buildPostQuery(filter)
-	fmt.Println("query", query)
-
-	fmt.Println("queryArgs", queryArgs)
 
 	countQuery, countArgs := buildPostCountQuery(filter)
 
@@ -170,7 +169,37 @@ func (r *postRepository) FindByID(ctx context.Context, postID string) (*models.P
 	ctx, cancel := context.WithTimeout(ctx, constants.QueryTimeout)
 	defer cancel()
 
-	return nil, nil
+	query := `
+		SELECT
+			p.id, p.title, p.slug, p.content, p.is_published, p.published_at,
+			p.created_at, p.created_by, p.updated_at, p.updated_by, p.author_id,
+			u.id as author_id, u.username as author_username, u.email as author_email,
+			r.id as role_id, r.name as role_name, r.level as role_level, r.description as role_description, r.is_active as role_is_active, r.created_at as role_created_at, r.created_by as role_created_by, r.updated_at as role_updated_at, r.updated_by as role_updated_by
+		FROM posts p
+		JOIN users u ON p.author_id = u.id
+		JOIN roles r ON u.role_id = r.id
+		WHERE p.id = $1
+	`
+
+	row := r.db.QueryRowContext(ctx, query, postID)
+
+	var post models.Post
+	var author models.User
+	var role models.Role
+	err := row.Scan(
+		&post.ID, &post.Title, &post.Slug, &post.Content, &post.IsPublished,
+		&post.PublishedAt, &post.CreatedAt, &post.CreatedBy, &post.UpdatedAt, &post.UpdatedBy, &post.AuthorID,
+		&author.ID, &author.Username, &author.Email,
+		&role.ID, &role.Name, &role.Level, &role.Description, &role.IsActive, &role.CreatedAt, &role.CreatedBy, &role.UpdatedAt, &role.UpdatedBy,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	post.Author = author
+	post.Author.Role = role
+
+	return &post, nil
 }
 
 func (r *postRepository) Update(ctx context.Context, tx *sql.Tx, post *models.Post) error {

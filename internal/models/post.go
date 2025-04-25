@@ -16,7 +16,7 @@ type Post struct {
 	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at,omitzero"`
 	UpdatedBy   *string    `db:"updated_by" json:"updated_by,omitzero"`
 	AuthorID    string     `db:"author_id" json:"author_id"`
-	Tags        []Tag      `json:"tags,omitempty,omitzero"`
+	Tags        []*Tag     `json:"tags,omitempty,omitzero"`
 	Author      User       `json:"author,omitempty,omitzero"`
 }
 

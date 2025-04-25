@@ -18,8 +18,8 @@ func NewRoutes(m *middleware.Middleware, authHandler *handlers.AuthHandler, user
 
 		// Post routes
 		api.GET("/posts", postHandler.GetAll)
-		api.GET("/posts/:userID", postHandler.GetAllByUserID)
-		api.GET("/posts:postID", postHandler.GetByID)
+		api.GET("/posts/:postID", postHandler.GetByID)
+		api.GET("/posts/user/:userID", postHandler.GetAllByUserID)
 	}
 
 	privateApi := router.Group("/api/v1")
@@ -33,8 +33,8 @@ func NewRoutes(m *middleware.Middleware, authHandler *handlers.AuthHandler, user
 
 		// Post routes
 		privateApi.POST("/posts", postHandler.Save)
-		privateApi.PUT("/posts:postID", m.RequireRoles(constants.RoleModerator, constants.RoleAdmin), postHandler.Update)
-		privateApi.DELETE("/posts:postID", m.RequireRoles(constants.RoleAdmin), postHandler.Delete)
+		privateApi.PUT("/posts/:postID", m.RequireRoles(constants.RoleModerator, constants.RoleAdmin), postHandler.Update)
+		privateApi.DELETE("/posts/:postID", m.RequireRoles(constants.RoleAdmin), postHandler.Delete)
 	}
 
 	return router
