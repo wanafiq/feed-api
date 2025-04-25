@@ -60,7 +60,7 @@ func (m *Middleware) RequireRoles(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userCtx, exists := GetUserContext(c)
 		if !exists {
-			m.logger.Errorw("GetUserContext", "exists", false)
+			m.logger.Errorw("failed to get user context", "exists", false)
 			m.abortWithJSON(c, http.StatusUnauthorized, "unauthorized")
 			return
 		}

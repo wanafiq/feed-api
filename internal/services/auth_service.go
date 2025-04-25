@@ -49,24 +49,24 @@ func NewAuthService(
 func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) (*models.User, error) {
 	existingUser, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		s.logger.Errorw("userRepo.FindByEmail", "email", req.Email, "error", err.Error())
+		s.logger.Errorw("failed to find user by email", "email", req.Email, "error", err.Error())
 		return nil, err
 	}
 	if existingUser != nil {
 		err := errors.New("user already exists")
-		s.logger.Errorw("userRepo.FindByEmail", "email", req.Email, "error", err.Error())
+		s.logger.Errorw(err.Error(), "email", req.Email, "error", err.Error())
 		return nil, err
 	}
 
 	hashedPassword, err := utils.Hash(req.Password)
 	if err != nil {
-		s.logger.Errorw("utils.Hash", "error", err.Error())
+		s.logger.Errorw("failed to hash password", "user", req.Email, "error", err.Error())
 		return nil, err
 	}
 
 	role, err := s.roleRepo.FindByName(ctx, constants.RoleUser)
 	if err != nil {
-		s.logger.Errorw("roleRepo.FindByName", "name", constants.RoleUser, "error", err.Error())
+		s.logger.Errorw("failed to find role name", "roleName", constants.RoleUser, "error", err.Error())
 		return nil, err
 	}
 
@@ -83,14 +83,14 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 
 	err = withTx(ctx, s.db, func(tx *sql.Tx) error {
 		if err := s.userRepo.Save(ctx, tx, &user); err != nil {
-			s.logger.Errorw("userRepo.Save", "error", err.Error())
+			s.logger.Errorw("failed to save user", "username", user.Username, "error", err.Error())
 			return err
 		}
 
 		rawToken := uuid.New().String()
 		hashedToken, err := utils.Hash(rawToken)
 		if err != nil {
-			s.logger.Errorw("utils.Hash", "error", err.Error())
+			s.logger.Errorw("failed to hash confirmation token", "token", rawToken, "error", err.Error())
 			return err
 		}
 
@@ -102,7 +102,7 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 		}
 
 		if err := s.tokenRepo.Save(ctx, tx, &token); err != nil {
-			s.logger.Errorw("tokenRepo.Save", "error", err.Error())
+			s.logger.Errorw("failed to save confirmation token", "token", rawToken, "error", err.Error())
 			return err
 		}
 
@@ -112,7 +112,7 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 		}
 
 		if err := s.emailService.Send(email.ConfirmationEmail, data, &user); err != nil {
-			s.logger.Errorw("emailService.Send", "error", err.Error())
+			s.logger.Errorw("failed to send confirmation email", "error", err.Error())
 			return err
 		}
 
@@ -129,12 +129,12 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 func (s *AuthService) Login(ctx context.Context, req *types.LoginRequest) (string, error) {
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
-		s.logger.Errorw("userRepo.FindByEmail", "error", err.Error())
+		s.logger.Errorw("failed to find user by email", "email", req.Email, "error", err.Error())
 		return "", constants.ErrUnauthorized
 	}
 
 	if ok := utils.VerifyHash(user.Password, req.Password); !ok {
-		s.logger.Errorw("utils.VerifyHash - invalid credential")
+		s.logger.Errorw("failed to verify password", "email", req.Email)
 		return "", constants.ErrUnauthorized
 	}
 
@@ -146,7 +146,7 @@ func (s *AuthService) Login(ctx context.Context, req *types.LoginRequest) (strin
 
 	token, err := utils.GenerateJWT(user, secret, expiredAt, issuer, audience)
 	if err != nil {
-		s.logger.Errorw("generateJWT", "error", err.Error())
+		s.logger.Errorw("failed to generate JWT", "username", user.Username, "error", err.Error())
 		return "", err
 	}
 
