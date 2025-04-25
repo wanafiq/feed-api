@@ -81,48 +81,47 @@ func (s *AuthService) Register(ctx context.Context, req *types.RegisterRequest) 
 		Role:      *role,
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	err = withTx(ctx, s.db, func(tx *sql.Tx) error {
+		if err := s.userRepo.Save(ctx, tx, &user); err != nil {
+			s.logger.Errorw("userRepo.Save", "error", err.Error())
+			return err
+		}
+
+		rawToken := uuid.New().String()
+		hashedToken, err := utils.Hash(rawToken)
+		if err != nil {
+			s.logger.Errorw("utils.Hash", "error", err.Error())
+			return err
+		}
+
+		token := models.Token{
+			Type:      constants.ConfirmationToken,
+			Value:     hashedToken,
+			ExpiredAt: time.Now().Add(constants.ConfirmationTokenExpireTime),
+			UserID:    user.ID,
+		}
+
+		if err := s.tokenRepo.Save(ctx, tx, &token); err != nil {
+			s.logger.Errorw("tokenRepo.Save", "error", err.Error())
+			return err
+		}
+
+		data := types.ConfirmationEmailData{
+			Username:      user.Username,
+			ActivationUrl: fmt.Sprintf("%s/confirm/%s", s.config.Url.Web, rawToken),
+		}
+
+		if err := s.emailService.Send(email.ConfirmationEmail, data, &user); err != nil {
+			s.logger.Errorw("emailService.Send", "error", err.Error())
+			return err
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		s.logger.Errorw("db.BeginTx", "error", err.Error())
 		return nil, err
 	}
-	defer tx.Rollback()
-
-	if err := s.userRepo.Save(ctx, tx, &user); err != nil {
-		s.logger.Errorw("userRepo.Save", "error", err.Error())
-		return nil, err
-	}
-
-	rawToken := uuid.New().String()
-	hashedToken, err := utils.Hash(rawToken)
-	if err != nil {
-		s.logger.Errorw("utils.Hash", "error", err.Error())
-		return nil, err
-	}
-
-	token := models.Token{
-		Type:      constants.ConfirmationToken,
-		Value:     hashedToken,
-		ExpiredAt: time.Now().Add(constants.ConfirmationTokenExpireTime),
-		UserID:    user.ID,
-	}
-
-	if err := s.tokenRepo.Save(ctx, tx, &token); err != nil {
-		s.logger.Errorw("tokenRepo.Save", "error", err.Error())
-		return nil, err
-	}
-
-	data := types.ConfirmationEmailData{
-		Username:      user.Username,
-		ActivationUrl: fmt.Sprintf("%s/confirm/%s", s.config.Url.Web, rawToken),
-	}
-
-	if err := s.emailService.Send(email.ConfirmationEmail, data, &user); err != nil {
-		s.logger.Errorw("emailService.Send", "error", err.Error())
-		return nil, err
-	}
-
-	tx.Commit()
 
 	return &user, nil
 }
